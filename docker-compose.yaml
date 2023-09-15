@@ -1,0 +1,66 @@
+# version: "3"
+# services:
+#   web:
+#     build: .
+#     ports:
+#       - "4001:4001"
+#     volumes:
+#       - .:/go/src/app
+#     env_file:
+#       - .env
+#     environment:
+#       - DATABASE_URL=postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=disable
+#     depends_on:
+#       - db
+#       - redis
+#   db:
+#     image: bitnami/postgresql:14
+#     ports:
+#       - "5432:5432"
+#     environment:
+#       - POSTGRESQL_USERNAME=${DB_USER}
+#       - POSTGRESQL_PASSWORD=${DB_PASSWORD}
+#       - POSTGRESQL_DATABASE=${DB_NAME}
+#   redis:
+#     image: redis
+#     ports:
+#       - "6379:6379"
+
+version: "3"
+services:
+  web:
+    build: .
+    ports:
+      - "4001:4001"
+    volumes:
+      - .:/go/src/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=disable
+    depends_on:
+      - db
+      - redis
+      - minio
+  db:
+    image: bitnami/postgresql:14
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRESQL_USERNAME=${DB_USER}
+      - POSTGRESQL_PASSWORD=${DB_PASSWORD}
+      - POSTGRESQL_DATABASE=${DB_NAME}
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    environment:
+      - MINIO_ROOT_USER=${ACCESKEY}
+      - MINIO_ROOT_PASSWORD=${SECRETKEY}
+    volumes:
+      - ./minio-data:/data
+    command: server ./minio-data:/data --console-address :9090
