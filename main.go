@@ -4,6 +4,7 @@ import (
 	"github.com/aliftoriq/go-crud/controllers"
 	"github.com/aliftoriq/go-crud/initializer"
 	"github.com/aliftoriq/go-crud/middleware"
+	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,13 +19,17 @@ func init() {
 
 func main() {
 	r := gin.Default()
-	r.POST("/signup", controllers.Signup)
-	r.POST("/login", controllers.Login)
-	r.GET("/validate", middleware.RequireAuth, controllers.Validate)
 
-	r.GET("/users/:id", middleware.RequireAuth, controllers.GetUser)
-	r.PUT("/users/:id", middleware.RequireAuth, controllers.UpdateUser)
-	r.DELETE("/users/:id", middleware.RequireAuth, controllers.DeleteUser)
+	userRepo := repositories.NewUserRepository()
+	userController := controllers.NewUsersController(userRepo)
+
+	r.POST("/signup", userController.Signup)
+	r.POST("/login", userController.Login)
+	r.GET("/validate", middleware.RequireAuth, userController.Validate)
+
+	r.GET("/users/:id", middleware.RequireAuth, userController.GetUser)
+	r.PUT("/users/:id", middleware.RequireAuth, userController.UpdateUser)
+	r.DELETE("/users/:id", middleware.RequireAuth, userController.DeleteUser)
 
 	r.POST("/articles", middleware.RequireAuth, controllers.CreateArticle)
 	r.PUT("/articles/:id", middleware.RequireAuth, controllers.UpdateArticle)

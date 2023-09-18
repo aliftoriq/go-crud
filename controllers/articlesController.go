@@ -49,7 +49,6 @@ func GetArticles(c *gin.Context) {
 	var articles []models.Article
 	key := "all_article"
 
-	// Attempt to retrieve data from the cache
 	art, status, err := cache.GetValueByKey(c, key)
 	if err != nil {
 		log.Println("Get Cache Error:", err)
@@ -99,7 +98,7 @@ func GetArticles(c *gin.Context) {
 		return
 	}
 
-	errSetCache := cache.SetKey(c, key, data, time.Second*3600*24)
+	errSetCache := cache.SetKey(c, key, data, time.Second*60)
 
 	if errSetCache != nil {
 		log.Println("Set Cache Error:", errSetCache)
@@ -116,13 +115,9 @@ func GetArticles(c *gin.Context) {
 }
 
 func GetArticleByID(c *gin.Context) {
-	// Get the article ID from the request parameters
 	id := c.Param("id")
-
-	// Define a key to uniquely identify the cached article by its ID
 	cacheKey := "article_" + id
 
-	// Attempt to retrieve data from the cache
 	art, status, err := cache.GetValueByKey(c, cacheKey)
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, "Failed to get article from cache", err)
@@ -141,14 +136,12 @@ func GetArticleByID(c *gin.Context) {
 		return
 	}
 
-	// Cache miss, fetch data from the database
 	var article models.Article
 	if result := initializer.DB.First(&article, id); result.Error != nil {
 		handleError(c, http.StatusNotFound, "Article not found", result.Error)
 		return
 	}
 
-	// Cache the fetched data
 	data, err := json.Marshal(article)
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, "Failed to marshal article data for cache", err)
@@ -178,7 +171,6 @@ func UpdateArticle(c *gin.Context) {
 		return
 	}
 
-	// Bind the request body to an Article struct
 	var updatedArticle models.Article
 	if err := c.ShouldBindJSON(&updatedArticle); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -187,11 +179,9 @@ func UpdateArticle(c *gin.Context) {
 		return
 	}
 
-	// Update the article fields
 	existingArticle.Tittle = updatedArticle.Tittle
 	existingArticle.Content = updatedArticle.Content
 
-	// Save the updated article to the database
 	if err := initializer.DB.Save(&existingArticle).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to update article",
@@ -206,10 +196,8 @@ func UpdateArticle(c *gin.Context) {
 }
 
 func DeleteArticle(c *gin.Context) {
-	// Get article ID from the request
 	id := c.Param("id")
 
-	// Check if the article exists
 	var existingArticle models.Article
 	if err := initializer.DB.First(&existingArticle, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -218,7 +206,6 @@ func DeleteArticle(c *gin.Context) {
 		return
 	}
 
-	// Delete the article from the database
 	if err := initializer.DB.Delete(&existingArticle).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to delete article",

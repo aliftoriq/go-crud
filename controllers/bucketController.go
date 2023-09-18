@@ -14,12 +14,10 @@ import (
 )
 
 func UploadImageToMinio(c *gin.Context) {
-	// Set your bucket name and the object (image) name
 	bucketName := os.Getenv("BUCKETNAME")
 
 	newUUID := uuid.NewString()
 
-	// Get the uploaded file from the request context
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -28,7 +26,6 @@ func UploadImageToMinio(c *gin.Context) {
 
 	objectName := newUUID + ".jpg"
 
-	// Open the uploaded file
 	fileContent, err := file.Open()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -36,7 +33,6 @@ func UploadImageToMinio(c *gin.Context) {
 	}
 	defer fileContent.Close()
 
-	// Create an object that allows you to upload the image
 	_, err = initializer.Client.PutObject(context.Background(), bucketName, objectName, fileContent, file.Size, minio.PutObjectOptions{ContentType: "img/png"})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -78,7 +74,6 @@ func DeleteImage(c *gin.Context) {
 	bucketName := os.Getenv("BUCKETNAME")
 	objectName := c.Param("id")
 
-	// Delete the image from the MinIO bucket.
 	err := initializer.Client.RemoveObject(c, bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -3,3 +3,9 @@
 
 # IDE files
 .idea
+
+# Ignore files in a "mocks" directory
+/repositories/mocks/
+
+# Ignore all files ending with "_test.go"
+*_test.go
