@@ -1,16 +1,14 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
-	"github.com/aliftoriq/go-crud/initializer"
+	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 )
 
 type BucketControllers interface {
@@ -20,17 +18,18 @@ type BucketControllers interface {
 }
 
 type bucketControllers struct {
-	bucket *minio.Client
+	bucketRepository repositories.BucketRepository
 }
 
-func NewBucketControllers() BucketControllers {
-	return &bucketControllers{bucket: initializer.Client}
+func NewBucketControllers(buckerRepo repositories.BucketRepository) BucketControllers {
+	return &bucketControllers{bucketRepository: buckerRepo}
 }
 
-func (minioClient *bucketControllers) UploadImageToMinio(c *gin.Context) {
-	bucketName := os.Getenv("BUCKETNAME")
+func (bc *bucketControllers) UploadImageToMinio(c *gin.Context) {
 
-	newUUID := uuid.NewString()
+	// untuk testing
+	// bucketName := "test-minio"
+	// objectName := "test.jpg"
 
 	file, err := c.FormFile("image")
 	if err != nil {
@@ -38,6 +37,8 @@ func (minioClient *bucketControllers) UploadImageToMinio(c *gin.Context) {
 		return
 	}
 
+	newUUID := uuid.NewString()
+	bucketName := os.Getenv("BUCKETNAME")
 	objectName := newUUID + ".jpg"
 
 	fileContent, err := file.Open()
@@ -47,7 +48,9 @@ func (minioClient *bucketControllers) UploadImageToMinio(c *gin.Context) {
 	}
 	defer fileContent.Close()
 
-	_, err = minioClient.bucket.PutObject(context.Background(), bucketName, objectName, fileContent, file.Size, minio.PutObjectOptions{ContentType: "img/png"})
+	// _, err = minioClient.bucket.PutObject(context.Background(), bucketName, objectName, fileContent, file.Size, minio.PutObjectOptions{ContentType: "img/png"})
+
+	err = bc.bucketRepository.PutObject(c, bucketName, objectName, fileContent, file.Size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -59,11 +62,16 @@ func (minioClient *bucketControllers) UploadImageToMinio(c *gin.Context) {
 	})
 }
 
-func (minioClient *bucketControllers) GetImage(c *gin.Context) {
-	bucketName := os.Getenv("BUCKETNAME")
+func (bc *bucketControllers) GetImage(c *gin.Context) {
 	objectName := c.Param("id")
+	bucketName := os.Getenv("BUCKETNAME")
 
-	image, err := minioClient.bucket.GetObject(c, bucketName, objectName, minio.GetObjectOptions{})
+	// unit testing
+	// bucketName := "test-minio"
+
+	// image, err := minioClient.bucket.GetObject(c, bucketName, objectName, minio.GetObjectOptions{})
+
+	image, err := bc.bucketRepository.GetObject(c, bucketName, objectName)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -72,23 +80,24 @@ func (minioClient *bucketControllers) GetImage(c *gin.Context) {
 		fmt.Println(err)
 	}
 
-	defer image.Close()
+	// defer image.Close()
 
 	_, err = io.Copy(c.Writer, image)
 	if err != nil {
 		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Image Not Found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image Not Found"})
 		return
 	}
 
 	c.Header("Content-Type", "image/jpeg")
 }
 
-func (minioClient *bucketControllers) DeleteImage(c *gin.Context) {
+func (bc *bucketControllers) DeleteImage(c *gin.Context) {
 	bucketName := os.Getenv("BUCKETNAME")
 	objectName := c.Param("id")
 
-	err := minioClient.bucket.RemoveObject(c, bucketName, objectName, minio.RemoveObjectOptions{})
+	// err := minioClient.bucket.RemoveObject(c, bucketName, objectName, minio.RemoveObjectOptions{})
+	err := bc.bucketRepository.DeleteObject(c, bucketName, objectName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

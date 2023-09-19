@@ -27,7 +27,8 @@ func main() {
 	cacheRepo := repositories.NewCacheRepository()
 	arController := controllers.NewArticlesController(arRepo, cacheRepo)
 
-	bucketController := controllers.NewBucketControllers()
+	bucketRepo := repositories.NewBucketRepository()
+	bucketController := controllers.NewBucketControllers(bucketRepo)
 
 	r.POST("/signup", userController.Signup)
 	r.POST("/login", userController.Login)
