@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-//go:generate mockery --outpkg user_repo_mocks --name UserRepository
+//go:generate mockery --outpkg mocks --name UserRepository
 type UserRepository interface {
 	FindUserByEmail(email string) (*models.User, error)
 	CreateUser(user *models.User) error

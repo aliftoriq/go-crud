@@ -23,6 +23,12 @@ func main() {
 	userRepo := repositories.NewUserRepository()
 	userController := controllers.NewUsersController(userRepo)
 
+	arRepo := repositories.NewArticleRepository()
+	cacheRepo := repositories.NewCacheRepository()
+	arController := controllers.NewArticlesController(arRepo, cacheRepo)
+
+	bucketController := controllers.NewBucketControllers()
+
 	r.POST("/signup", userController.Signup)
 	r.POST("/login", userController.Login)
 	r.GET("/validate", middleware.RequireAuth, userController.Validate)
@@ -31,15 +37,15 @@ func main() {
 	r.PUT("/users/:id", middleware.RequireAuth, userController.UpdateUser)
 	r.DELETE("/users/:id", middleware.RequireAuth, userController.DeleteUser)
 
-	r.POST("/articles", middleware.RequireAuth, controllers.CreateArticle)
-	r.PUT("/articles/:id", middleware.RequireAuth, controllers.UpdateArticle)
-	r.GET("/articles", middleware.RequireAuth, controllers.GetArticles)
-	r.GET("/articles/:id", middleware.RequireAuth, controllers.GetArticleByID)
-	r.DELETE("/articles/:id", middleware.RequireAuth, controllers.DeleteArticle)
+	r.POST("/articles", middleware.RequireAuth, arController.CreateArticle)
+	r.PUT("/articles/:id", middleware.RequireAuth, arController.UpdateArticle)
+	r.GET("/articles", middleware.RequireAuth, arController.GetArticles)
+	r.GET("/articles/:id", middleware.RequireAuth, arController.GetArticleByID)
+	r.DELETE("/articles/:id", middleware.RequireAuth, arController.DeleteArticle)
 
-	r.POST("/upload-image", middleware.RequireAuth, controllers.UploadImageToMinio)
-	r.GET("/image/:id", middleware.RequireAuth, controllers.GetImage)
-	r.DELETE("/image/:id", middleware.RequireAuth, controllers.DeleteImage)
+	r.POST("/upload-image", middleware.RequireAuth, bucketController.UploadImageToMinio)
+	r.GET("/image/:id", middleware.RequireAuth, bucketController.GetImage)
+	r.DELETE("/image/:id", middleware.RequireAuth, bucketController.DeleteImage)
 
 	r.Run()
 }

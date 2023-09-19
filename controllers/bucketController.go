@@ -13,7 +13,21 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func UploadImageToMinio(c *gin.Context) {
+type BucketControllers interface {
+	UploadImageToMinio(c *gin.Context)
+	GetImage(c *gin.Context)
+	DeleteImage(c *gin.Context)
+}
+
+type bucketControllers struct {
+	bucket *minio.Client
+}
+
+func NewBucketControllers() BucketControllers {
+	return &bucketControllers{bucket: initializer.Client}
+}
+
+func (minioClient *bucketControllers) UploadImageToMinio(c *gin.Context) {
 	bucketName := os.Getenv("BUCKETNAME")
 
 	newUUID := uuid.NewString()
@@ -33,7 +47,7 @@ func UploadImageToMinio(c *gin.Context) {
 	}
 	defer fileContent.Close()
 
-	_, err = initializer.Client.PutObject(context.Background(), bucketName, objectName, fileContent, file.Size, minio.PutObjectOptions{ContentType: "img/png"})
+	_, err = minioClient.bucket.PutObject(context.Background(), bucketName, objectName, fileContent, file.Size, minio.PutObjectOptions{ContentType: "img/png"})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -45,11 +59,11 @@ func UploadImageToMinio(c *gin.Context) {
 	})
 }
 
-func GetImage(c *gin.Context) {
+func (minioClient *bucketControllers) GetImage(c *gin.Context) {
 	bucketName := os.Getenv("BUCKETNAME")
 	objectName := c.Param("id")
 
-	image, err := initializer.Client.GetObject(c, bucketName, objectName, minio.GetObjectOptions{})
+	image, err := minioClient.bucket.GetObject(c, bucketName, objectName, minio.GetObjectOptions{})
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -70,11 +84,11 @@ func GetImage(c *gin.Context) {
 	c.Header("Content-Type", "image/jpeg")
 }
 
-func DeleteImage(c *gin.Context) {
+func (minioClient *bucketControllers) DeleteImage(c *gin.Context) {
 	bucketName := os.Getenv("BUCKETNAME")
 	objectName := c.Param("id")
 
-	err := initializer.Client.RemoveObject(c, bucketName, objectName, minio.RemoveObjectOptions{})
+	err := minioClient.bucket.RemoveObject(c, bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
