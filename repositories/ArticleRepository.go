@@ -53,14 +53,14 @@ func (ar *articleRepository) GetArticleById(id string) (*models.Article, error) 
 
 func (ar *articleRepository) UpdateArticle(id string, article models.Article) error {
 	var existingArticle models.Article
-	if err := initializer.DB.First(&existingArticle, id).Error; err != nil {
+	if err := ar.db.First(&existingArticle, id).Error; err != nil {
 		return errors.New("ARTICLE NOT FOUND")
 	}
 
 	existingArticle.Title = article.Title
 	existingArticle.Content = article.Content
 
-	if err := initializer.DB.Save(&existingArticle).Error; err != nil {
+	if err := ar.db.Save(&existingArticle).Error; err != nil {
 		return errors.New("FAILED TO UPDATE ARTICLE")
 	}
 

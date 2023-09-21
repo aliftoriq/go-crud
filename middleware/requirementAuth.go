@@ -10,9 +10,22 @@ import (
 	"github.com/aliftoriq/go-crud/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
-func RequireAuth(c *gin.Context) {
+type Auth interface {
+	RequireAuth(c *gin.Context)
+}
+
+type auth struct {
+	db *gorm.DB
+}
+
+func NewAuth() Auth {
+	return &auth{db: initializer.DB}
+}
+
+func (a *auth) RequireAuth(c *gin.Context) {
 	tokenString, err := c.Cookie("Authorization")
 
 	if err != nil {
@@ -34,7 +47,7 @@ func RequireAuth(c *gin.Context) {
 
 		// Find the user with token sub
 		var user models.User
-		initializer.DB.First(&user, claims["sub"])
+		a.db.First(&user, claims["sub"])
 
 		if user.ID == 0 {
 			c.AbortWithStatus(http.StatusUnauthorized)

@@ -20,6 +20,8 @@ func init() {
 func main() {
 	r := gin.Default()
 
+	middlewareAuth := middleware.NewAuth()
+
 	userRepo := repositories.NewUserRepository()
 	userController := controllers.NewUsersController(userRepo)
 
@@ -32,21 +34,21 @@ func main() {
 
 	r.POST("/signup", userController.Signup)
 	r.POST("/login", userController.Login)
-	r.GET("/validate", middleware.RequireAuth, userController.Validate)
+	r.GET("/validate", middlewareAuth.RequireAuth, userController.Validate)
 
-	r.GET("/users/:id", middleware.RequireAuth, userController.GetUser)
-	r.PUT("/users/:id", middleware.RequireAuth, userController.UpdateUser)
-	r.DELETE("/users/:id", middleware.RequireAuth, userController.DeleteUser)
+	r.GET("/users/:id", middlewareAuth.RequireAuth, userController.GetUser)
+	r.PUT("/users/:id", middlewareAuth.RequireAuth, userController.UpdateUser)
+	r.DELETE("/users/:id", middlewareAuth.RequireAuth, userController.DeleteUser)
 
-	r.POST("/articles", middleware.RequireAuth, arController.CreateArticle)
-	r.PUT("/articles/:id", middleware.RequireAuth, arController.UpdateArticle)
-	r.GET("/articles", middleware.RequireAuth, arController.GetArticles)
-	r.GET("/articles/:id", middleware.RequireAuth, arController.GetArticleByID)
-	r.DELETE("/articles/:id", middleware.RequireAuth, arController.DeleteArticle)
+	r.POST("/articles", middlewareAuth.RequireAuth, arController.CreateArticle)
+	r.PUT("/articles/:id", middlewareAuth.RequireAuth, arController.UpdateArticle)
+	r.GET("/articles", middlewareAuth.RequireAuth, arController.GetArticles)
+	r.GET("/articles/:id", middlewareAuth.RequireAuth, arController.GetArticleByID)
+	r.DELETE("/articles/:id", middlewareAuth.RequireAuth, arController.DeleteArticle)
 
-	r.POST("/upload-image", middleware.RequireAuth, bucketController.UploadImageToMinio)
-	r.GET("/image/:id", middleware.RequireAuth, bucketController.GetImage)
-	r.DELETE("/image/:id", middleware.RequireAuth, bucketController.DeleteImage)
+	r.POST("/upload-image", middlewareAuth.RequireAuth, bucketController.UploadImageToMinio)
+	r.GET("/image/:id", middlewareAuth.RequireAuth, bucketController.GetImage)
+	r.DELETE("/image/:id", middlewareAuth.RequireAuth, bucketController.DeleteImage)
 
 	r.Run()
 }
