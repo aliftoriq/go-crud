@@ -8,7 +8,6 @@ import (
 
 	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type BucketControllers interface {
@@ -27,19 +26,19 @@ func NewBucketControllers(buckerRepo repositories.BucketRepository) BucketContro
 
 func (bc *bucketControllers) UploadImageToMinio(c *gin.Context) {
 
-	// untuk testing
-	// bucketName := "test-minio"
-	// objectName := "test.jpg"
-
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	newUUID := uuid.NewString()
 	bucketName := os.Getenv("BUCKETNAME")
-	objectName := newUUID + ".jpg"
+
+	// newUUID := uuid.NewString()
+	// objectName := newUUID + ".jpg"
+
+	// untuk testing
+	objectName := "test.jpg"
 
 	fileContent, err := file.Open()
 	if err != nil {
@@ -65,9 +64,6 @@ func (bc *bucketControllers) UploadImageToMinio(c *gin.Context) {
 func (bc *bucketControllers) GetImage(c *gin.Context) {
 	objectName := c.Param("id")
 	bucketName := os.Getenv("BUCKETNAME")
-
-	// unit testing
-	// bucketName := "test-minio"
 
 	// image, err := minioClient.bucket.GetObject(c, bucketName, objectName, minio.GetObjectOptions{})
 

@@ -389,6 +389,7 @@ These routes are responsible for managing operations related to object storage (
 - **Description**: Delete an image from the bucket based on its ID.
 - **Headers**: none
 - **JSON Response**:
+
   - Success
     ```json
     {
@@ -396,8 +397,55 @@ These routes are responsible for managing operations related to object storage (
     }
     ```
   - Failure
+
     ```json
     {
       "error": "Error message"
     }
     ```
+
+    <br> <br/>
+
+# Unit Testing Documentation
+
+This documentation provides an overview of unit testing strategies and tools used in your project. Unit testing is essential to ensure that individual components of your application work correctly in isolation. In this project, we use Postman for integration testing to verify the entire architecture's functionality, and we utilize the testify and mock libraries to test controllers without establishing connections to the database, Redis, or Minio.
+
+## Testing Approach
+
+### Unit Testing
+
+Unit testing focuses on testing individual components or units of your code in isolation. In your project, unit tests are primarily applied to the controllers. These tests ensure that your controllers handle requests and produce responses correctly without interacting with external services like the database, Redis, or Minio. Instead, we use mocking to simulate these external services.
+
+### Integration Testing (Postman)
+
+Integration testing verifies that the different parts of your application work together as expected. In this project, we use Postman for integration testing. Postman allows us to send HTTP requests to your API endpoints and check the responses. These tests ensure that your entire architecture functions correctly.
+
+## Testing Tools
+
+### Testify
+
+[Testify](https://pkg.go.dev/github.com/stretchr/testify) is a popular testing framework for the Go programming language. It provides various assertion functions and tools for writing clean and efficient unit tests. We use Testify to write and run unit tests for the controllers.
+
+### Mock
+
+[Mock](https://pkg.go.dev/github.com/golang/mock) is a mocking framework for Go. It allows us to create mock implementations of interfaces, which helps us simulate the behavior of external dependencies (such as the database, Redis, or Minio) during unit tests. By using Mock, we can isolate the controllers from the actual services.
+
+### Postman
+
+[Postman](https://www.postman.com/) is a powerful tool for testing APIs. It allows us to create collections of API requests and run them as part of our integration testing process. Postman provides features for defining test scripts, setting up environments, and generating reports to ensure the correctness of your API endpoints.
+
+## Writing Unit Tests
+
+In your project, unit tests are written for controllers using Testify and Mock. These tests focus on verifying that the controllers handle requests and produce responses correctly. They do not interact with the actual database, Redis, or Minio services. Instead, we use mocks to simulate the behavior of these services.
+
+## Integration Testing with Postman
+
+Integration tests are performed using Postman. You can create collections of API requests in Postman to test the entire architecture, including interactions with databases, Redis, and Minio. These tests ensure that your API endpoints function correctly in a real-world scenario.
+
+## Running Tests
+
+To run unit tests, use the following command:
+
+```bash
+go test ./controllers -cover
+```
