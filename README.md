@@ -436,7 +436,7 @@ Integration testing verifies that the different parts of your application work t
 
 ## Writing Unit Tests
 
-In your project, unit tests are written for controllers using Testify and Mock. These tests focus on verifying that the controllers handle requests and produce responses correctly. They do not interact with the actual database, Redis, or Minio services. Instead, we use mocks to simulate the behavior of these services.
+In this project, unit tests are written for controllers using Testify and Mock. These tests focus on verifying that the controllers handle requests and produce responses correctly. They do not interact with the actual database, Redis, or Minio services. Instead, we use mocks to simulate the behavior of these services.
 
 ## Integration Testing with Postman
 

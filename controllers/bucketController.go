@@ -8,6 +8,7 @@ import (
 
 	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type BucketControllers interface {
@@ -34,11 +35,11 @@ func (bc *bucketControllers) UploadImageToMinio(c *gin.Context) {
 
 	bucketName := os.Getenv("BUCKETNAME")
 
-	// newUUID := uuid.NewString()
-	// objectName := newUUID + ".jpg"
+	newUUID := uuid.NewString()
+	objectName := newUUID + ".jpg"
 
 	// untuk testing
-	objectName := "test.jpg"
+	// objectName := "test.jpg"
 
 	fileContent, err := file.Open()
 	if err != nil {
