@@ -1,9 +1,3 @@
-# ENV
-.env
-
-# IDE files
-.idea
-
 # Ignore files in a "mocks" directory
 /repositories/mocks/
 

@@ -7,6 +7,18 @@ import (
 	"gorm.io/gorm"
 )
 
+// type Database interface {
+// }
+
+// type database struct {
+// 	DB *gorm.DB
+// }
+
+// func NewDatabase() Database {
+// 	db := ConnectToDb()
+// 	return &database{DB: db}
+// }
+
 var DB *gorm.DB
 
 func ConnectToDb() {

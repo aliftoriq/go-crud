@@ -6,124 +6,153 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aliftoriq/go-crud/cache"
-	"github.com/aliftoriq/go-crud/initializer"
 	"github.com/aliftoriq/go-crud/models"
+	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
 )
 
-func CreateArticle(c *gin.Context) {
+type ArticlesController interface {
+	CreateArticle(c *gin.Context)
+	GetArticles(c *gin.Context)
+	GetArticleByID(c *gin.Context)
+	UpdateArticle(c *gin.Context)
+	DeleteArticle(c *gin.Context)
+}
+
+type articlesController struct {
+	arRepo    repositories.ArticleRepository
+	cacheRepo repositories.CacheRepository
+}
+
+func NewArticlesController(arRepo repositories.ArticleRepository, cacheRepo repositories.CacheRepository) ArticlesController {
+	return &articlesController{
+		arRepo:    arRepo,
+		cacheRepo: cacheRepo,
+	}
+}
+
+// CreateArticle godoc
+// @Summary Create a new article
+// @Description Create a new article with title and content
+// @Tags articles
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "User Token"
+// @Param body body Article true "Article creation details"
+// @Success 200 {object} Response
+// @Failure 400 {object} ResponseErr
+// @Failure 500 {object} ResponseErr
+// @Router /articles [post]
+func (h *articlesController) CreateArticle(c *gin.Context) {
 	var body struct {
-		Email   string `gorm:"unique"`
-		Tittle  string
-		Content string
+		Email   string `json:"email"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
 	}
 
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "FAILED TO READ BODY",
+		c.JSON(http.StatusBadRequest, ResponseErr{
+			Error: "FAILED TO READ BODY",
 		})
 		return
 	}
 
 	article := models.Article{
 		Email:   body.Email,
-		Tittle:  body.Tittle,
+		Title:   body.Title,
 		Content: body.Content,
 	}
 
-	result := initializer.DB.Create(&article)
-	if result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to create Article",
+	arRepo := h.arRepo
+	if err := arRepo.CreateArticle(article); err != nil {
+		c.JSON(http.StatusBadRequest, ResponseErr{
+			Error: "Failed to create Article",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Article Created Succesfuly",
+	c.JSON(http.StatusOK, CreateArticleResponse{
+		Message: "Article Created Successfully",
 	})
 }
 
-func GetArticles(c *gin.Context) {
-	var articles []models.Article
+// GetArticles godoc
+// @Summary Get a list of articles
+// @Description Get a list of articles from the cache or database
+// @Tags articles
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "User Token"
+// @Success 200 {object} GetArticlesResponseswag
+// @Failure 500 {object} ResponseErr
+// @Router /articles [get]
+func (h *articlesController) GetArticles(c *gin.Context) {
 	key := "all_article"
 
-	// Attempt to retrieve data from the cache
-	art, status, err := cache.GetValueByKey(c, key)
+	// Get data from cache redis
+	art, status, err := h.cacheRepo.GetValueByKey(c, key)
 	if err != nil {
-		log.Println("Get Cache Error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to get articles from cache",
-			"details": err.Error(),
-		})
+		handleError(c, http.StatusInternalServerError, "Failed to get articles from cache", err)
 		return
 	} else if status {
 		var cachedArticles []models.Article
 		err := json.Unmarshal([]byte(art), &cachedArticles)
 		if err != nil {
-			log.Println("Unmarshal Error:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to unmarshal cached data",
-				"details": err.Error(),
-			})
+			handleError(c, http.StatusInternalServerError, "Failed to unmarshal cached data", err)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"data":    cachedArticles,
-			"message": "Get Articles Successfully (from cache)",
+		c.JSON(http.StatusOK, GetArticlesResponse{
+			Data:    &cachedArticles,
+			Message: "Get Articles Successfully (from cache)",
 		})
 		return
 	}
 
 	// Cache miss, fetch data from the database
-	result := initializer.DB.Find(&articles)
-
-	if result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Failed to get Articles",
-			"details": result.Error.Error(),
-		})
+	arRepo := h.arRepo
+	result, err := arRepo.GetArticles()
+	if err != nil {
+		handleError(c, http.StatusInternalServerError, "Failed to get Articles", err)
 		return
 	}
 
 	// Cache the fetched data
-	data, err := json.Marshal(articles)
+	data, err := json.Marshal(result)
 	if err != nil {
-		log.Println("Marshal Error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to marshal data for cache",
-			"details": err.Error(),
-		})
+		handleError(c, http.StatusInternalServerError, "Failed to marshal data for cache", err)
 		return
 	}
 
-	errSetCache := cache.SetKey(c, key, data, time.Second*3600*24)
-
+	errSetCache := h.cacheRepo.SetKey(c, key, data, time.Second*60)
 	if errSetCache != nil {
-		log.Println("Set Cache Error:", errSetCache)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to set cache",
-			"details": errSetCache,
-		})
+		handleError(c, http.StatusInternalServerError, "Failed to set cache", errSetCache)
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data":    articles,
-		"message": "Get Articles Successfully (from database)",
+	c.JSON(http.StatusOK, GetArticlesResponse{
+		Data:    result,
+		Message: "Get Articles Successfully (from database)",
 	})
 }
 
-func GetArticleByID(c *gin.Context) {
-	// Get the article ID from the request parameters
+// GetArticleByID godoc
+// @Summary Get an article by its ID
+// @Description Get an article by providing its ID
+// @Tags articles
+// @Accept json
+// @Produce json
+// @Param id path string true "Article ID"
+// @Param Authorization header string true "User Token"
+// @Success 200 {object} GetArticleByIDResponseSwag
+// @Failure 404 {object} ResponseErr
+// @Failure 500 {object} ResponseErr
+// @Router /articles/{id} [get]
+func (h *articlesController) GetArticleByID(c *gin.Context) {
 	id := c.Param("id")
-
-	// Define a key to uniquely identify the cached article by its ID
 	cacheKey := "article_" + id
 
-	// Attempt to retrieve data from the cache
-	art, status, err := cache.GetValueByKey(c, cacheKey)
+	art, status, err := h.cacheRepo.GetValueByKey(c, cacheKey)
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, "Failed to get article from cache", err)
 		return
@@ -134,101 +163,111 @@ func GetArticleByID(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"data":    cachedArticle,
-			"message": "Get Article by ID Successfully (from cache)",
+		c.JSON(http.StatusOK, GetArticleByIDResponse{
+			Data:    &cachedArticle,
+			Message: "Get Article by ID Successfully (from cache)",
 		})
 		return
 	}
 
-	// Cache miss, fetch data from the database
-	var article models.Article
-	if result := initializer.DB.First(&article, id); result.Error != nil {
-		handleError(c, http.StatusNotFound, "Article not found", result.Error)
+	arRepo := h.arRepo
+	result, err := arRepo.GetArticleById(id)
+	if err != nil {
+		handleError(c, http.StatusNotFound, "Article not found", err)
 		return
 	}
 
-	// Cache the fetched data
-	data, err := json.Marshal(article)
+	// Set Cache to Redis
+	data, err := json.Marshal(result)
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, "Failed to marshal article data for cache", err)
 		return
 	}
 
-	if err := cache.SetKey(c, cacheKey, data, time.Second*60); err != nil {
+	if err := h.cacheRepo.SetKey(c, cacheKey, data, time.Second*60); err != nil {
 		handleError(c, http.StatusInternalServerError, "Failed to set article cache", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data":    article,
-		"message": "Get Article by ID Successfully (from database)",
+	c.JSON(http.StatusOK, GetArticleByIDResponse{
+		Data:    result,
+		Message: "Get Article by ID Successfully (from database)",
 	})
 }
 
-func UpdateArticle(c *gin.Context) {
-
+// UpdateArticle godoc
+// @Summary Update article
+// @Description Update article with title and content by ID
+// @Tags articles
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "User Token"
+// @Param id path string true "Article ID"
+// @Param body body Article true "Article creation details"
+// @Success 200 {object} Response
+// @Failure 400 {object} ResponseErr
+// @Failure 500 {object} ResponseErr
+// @Router /articles/{id} [PUT]
+func (h *articlesController) UpdateArticle(c *gin.Context) {
+	arRepo := h.arRepo
 	id := c.Param("id")
 
-	var existingArticle models.Article
-	if err := initializer.DB.First(&existingArticle, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Article not found",
-		})
-		return
-	}
-
-	// Bind the request body to an Article struct
 	var updatedArticle models.Article
 	if err := c.ShouldBindJSON(&updatedArticle); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request data",
-		})
+		err := ResponseErr{
+			Error: "Invalid request data",
+		}
+		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	// Update the article fields
-	existingArticle.Tittle = updatedArticle.Tittle
+	var existingArticle models.Article
+	existingArticle.Title = updatedArticle.Title
 	existingArticle.Content = updatedArticle.Content
 
-	// Save the updated article to the database
-	if err := initializer.DB.Save(&existingArticle).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update article",
-		})
+	if err := arRepo.UpdateArticle(id, existingArticle); err != nil {
+		err := ResponseErr{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Article updated successfully",
-		"data":    existingArticle,
-	})
+	resp := Response{
+		Message: "Article updated successfully",
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
-func DeleteArticle(c *gin.Context) {
-	// Get article ID from the request
+// DeleteArticle godoc
+// @Summary Delete an article by its ID
+// @Description Delete an article by providing its ID
+// @Tags articles
+// @Accept json
+// @Produce json
+// @Param id path string true "Article ID"
+// @Param Authorization header string true "User Token"
+// @Success 200 {object} Response
+// @Failure 404 {object} ResponseErr
+// @Failure 500 {object} ResponseErr
+// @Router /articles/{id} [delete]
+func (h *articlesController) DeleteArticle(c *gin.Context) {
 	id := c.Param("id")
 
-	// Check if the article exists
-	var existingArticle models.Article
-	if err := initializer.DB.First(&existingArticle, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Article not found",
-		})
+	arRepo := h.arRepo
+
+	if err := arRepo.DeleteArticle(id); err != nil {
+		err := ResponseErr{
+			Error: err.Error(),
+		}
+		c.JSON(http.StatusNotFound, err)
 		return
 	}
 
-	// Delete the article from the database
-	if err := initializer.DB.Delete(&existingArticle).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete article",
-		})
-		return
+	resp := Response{
+		Message: "Article deleted successfully",
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Article deleted successfully",
-	})
+	c.JSON(http.StatusOK, resp)
 }
 
 func handleError(c *gin.Context, statusCode int, message string, err error) {
