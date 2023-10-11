@@ -5,12 +5,11 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/aliftoriq/go-crud/models"
 	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UsersController interface {
@@ -32,17 +31,28 @@ func NewUsersController(userRepo repositories.UserRepository) UsersController {
 	}
 }
 
+// @CreateTags godoc
+
+// Signup godoc
+// @Summary Register a new user
+// @Description Register a new user with a raw JSON request body containing name, email, and password
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param body body SignupRequest true "User registration details"
+// @Success 200 {object} Response{}
+// @Failure 400 {object} ResponseErr{}
+// @Failure 409 {object} ResponseErr{}
+// @Failure 500 {object} ResponseErr{}
+// @Router /signup [post]
 func (h *usersController) Signup(c *gin.Context) {
-	var body struct {
-		Name     string
-		Email    string
-		Password string
-	}
+	var body SignupRequest
 
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "FAILED TO READ BODY",
-		})
+		resp := ResponseErr{
+			Error: "FAILED TO READ BODY",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
@@ -51,18 +61,20 @@ func (h *usersController) Signup(c *gin.Context) {
 	userRepo := h.userRepo
 	_, err := userRepo.FindUserByEmail(body.Email)
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": "User with this email already exists",
-		})
+		resp := ResponseErr{
+			Error: "User with this email already exists",
+		}
+		c.JSON(http.StatusConflict, resp)
 		return
 	}
 
 	// Hash the user's password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed To Hash Password",
-		})
+		resp := ResponseErr{
+			Error: "Failed To Hash Password",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
@@ -74,62 +86,83 @@ func (h *usersController) Signup(c *gin.Context) {
 	}
 
 	if err := userRepo.CreateUser(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed To create User",
-		})
+		resp := ResponseErr{
+			Error: "Failed To create User",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User Registered Successfully",
-	})
-}
-
-func (h *usersController) Login(c *gin.Context) {
-	var body struct {
-		Email    string
-		Password string
+	resp := Response{
+		Message: "User Registered Successfully",
 	}
 
-	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "FAILED TO READ BODY",
-		})
+	c.JSON(http.StatusOK, resp)
+}
+
+// Login godoc
+// @Summary Login user
+// @Description Log in to the system to get a user token.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param body body LoginRequest true "User login details"
+// @Success 200 {object} LoginResponse{}
+// @Failure 400 {object} ResponseErr{}
+// @Failure 401 {object} ResponseErr{}
+// @Router /login [post]
+func (h *usersController) Login(c *gin.Context) {
+	var body LoginRequest
+
+	if c.BindJSON(&body) != nil {
+		resp := ResponseErr{
+			Error: "FAILED TO READ BODY",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
 	userRepo := h.userRepo
 	user, err := userRepo.FindByEmail(body.Email)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid Email or Password",
-		})
+		resp := ResponseErr{
+			Error: "Invalid Email or Password",
+		}
+		c.JSON(http.StatusUnauthorized, resp)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid Email or Password",
-		})
+		resp := ResponseErr{
+			Error: "Invalid Email or Password",
+		}
+		c.JSON(http.StatusUnauthorized, resp)
 		return
 	}
 
 	tokenString, err := generateToken(user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to create token",
-		})
+		resp := ResponseErr{
+			Error: "Failed to create token",
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
 	setTokenCookie(c, tokenString)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logged in",
-		"token":   tokenString,
-		"data":    user,
-	})
+	loginResp := LoginResponse{
+		Message: "Logged in",
+		Token:   tokenString,
+		Data: &User{
+			Name:     user.Name,
+			Email:    user.Email,
+			Password: user.Password,
+		},
+	}
+
+	c.JSON(http.StatusOK, loginResp)
 }
 
 // Generate JWT token for the user

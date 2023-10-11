@@ -90,6 +90,8 @@ Before you begin, ensure that you have the following prerequisites installed and
 
    The API should now be running on `http://localhost:4001`.
 
+6. Access the Swagger documentation by opening your web browser and navigating to http://localhost:4001/docs. You can test the API endpoints using the Swagger interface.
+
 ## Routes
 
 This is an overview of the available routes and endpoints for the RESTful API. The API requires authentication using a Firebase token, which is obtained from cookies. Users must log in before accessing any other route, except for the signup and login routes.

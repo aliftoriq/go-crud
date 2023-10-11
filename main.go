@@ -1,11 +1,15 @@
 package main
 
 import (
+	_ "github.com/aliftoriq/go-crud/docs"
+
 	"github.com/aliftoriq/go-crud/controllers"
 	"github.com/aliftoriq/go-crud/initializer"
 	"github.com/aliftoriq/go-crud/middleware"
 	"github.com/aliftoriq/go-crud/repositories"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func init() {
@@ -16,6 +20,12 @@ func init() {
 	initializer.ConnectToRedis()
 
 }
+
+// @title Tag Go Crud Service API
+// @version 1.0
+// @description A golang Restfull API
+
+// @host localhost:4001
 
 func main() {
 	r := gin.Default()
@@ -31,6 +41,9 @@ func main() {
 
 	bucketRepo := repositories.NewBucketRepository()
 	bucketController := controllers.NewBucketControllers(bucketRepo)
+
+	// add swagger
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	r.POST("/signup", userController.Signup)
 	r.POST("/login", userController.Login)
